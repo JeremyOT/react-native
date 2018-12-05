@@ -93,11 +93,13 @@ function tryRunAdbReverse(packagerPort, device) {
   }
 }
 
-function getPackageNameWithSuffix(appId, appIdSuffix, packageName) {
+function getAppId(appId, appIdSuffix, gradleAppId, packageId) {
   if (appId) {
     return appId;
   } else if (appIdSuffix) {
     return packageName + '.' + appIdSuffix;
+  } else if (gradleAppId) {
+    return gradleAppId
   }
 
   return packageName;
@@ -112,9 +114,14 @@ function buildAndRun(args) {
     .readFileSync(`${args.appFolder}/src/main/AndroidManifest.xml`, 'utf8')
     .match(/package="(.+?)"/)[1];
 
-  const packageNameWithSuffix = getPackageNameWithSuffix(
+  const gradleAppId = fs
+    .readFileSync(`${args.appFolder}/build.gradle`, 'utf8')
+    .match(/applicationId\s+"(.+?)"/)[1];
+
+  const appId = getAppId(
     args.appId,
     args.appIdSuffix,
+    gradleAppId,
     packageName,
   );
 
@@ -124,7 +131,7 @@ function buildAndRun(args) {
       return runOnSpecificDevice(
         args,
         cmd,
-        packageNameWithSuffix,
+        appId,
         packageName,
         adbPath,
       );
@@ -135,7 +142,7 @@ function buildAndRun(args) {
     return runOnAllDevices(
       args,
       cmd,
-      packageNameWithSuffix,
+      appId,
       packageName,
       adbPath,
     );
@@ -145,7 +152,7 @@ function buildAndRun(args) {
 function runOnSpecificDevice(
   args,
   gradlew,
-  packageNameWithSuffix,
+  appId,
   packageName,
   adbPath,
 ) {
@@ -156,7 +163,7 @@ function runOnSpecificDevice(
       installAndLaunchOnDevice(
         args,
         args.deviceId,
-        packageNameWithSuffix,
+        appId,
         packageName,
         adbPath,
       );
@@ -214,7 +221,7 @@ function tryInstallAppOnDevice(args, device) {
 
 function tryLaunchAppOnDevice(
   device,
-  packageNameWithSuffix,
+  appId,
   packageName,
   adbPath,
   mainActivity,
@@ -227,7 +234,7 @@ function tryLaunchAppOnDevice(
       'am',
       'start',
       '-n',
-      packageNameWithSuffix + '/' + packageName + '.' + mainActivity,
+      appId + '/' + packageName + '.' + mainActivity,
     ];
     console.log(
       chalk.bold(
@@ -245,7 +252,7 @@ function tryLaunchAppOnDevice(
 function installAndLaunchOnDevice(
   args,
   selectedDevice,
-  packageNameWithSuffix,
+  appId,
   packageName,
   adbPath,
 ) {
@@ -253,7 +260,7 @@ function installAndLaunchOnDevice(
   tryInstallAppOnDevice(args, selectedDevice);
   tryLaunchAppOnDevice(
     selectedDevice,
-    packageNameWithSuffix,
+    appId,
     packageName,
     adbPath,
     args.mainActivity,
@@ -263,7 +270,7 @@ function installAndLaunchOnDevice(
 function runOnAllDevices(
   args,
   cmd,
-  packageNameWithSuffix,
+  appId,
   packageName,
   adbPath,
 ) {
@@ -319,7 +326,7 @@ function runOnAllDevices(
       tryRunAdbReverse(args.port, device);
       tryLaunchAppOnDevice(
         device,
-        packageNameWithSuffix,
+        appId,
         packageName,
         adbPath,
         args.mainActivity,
@@ -334,7 +341,7 @@ function runOnAllDevices(
         'am',
         'start',
         '-n',
-        packageNameWithSuffix + '/' + packageName + '.MainActivity',
+        appId + '/' + packageName + '.MainActivity',
       ];
       console.log(
         chalk.bold(
